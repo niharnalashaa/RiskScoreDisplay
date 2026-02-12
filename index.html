@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Risk Score Display | Early Clinical Deterioration</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --border: #2d3a4f;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --high: #f85149;
+      --medium: #d29922;
+      --low: #3fb950;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem;
+      line-height: 1.6;
+    }
+    .container { max-width: 720px; margin: 0 auto; }
+
+    .loading {
+      text-align: center;
+      padding: 4rem 2rem;
+    }
+    .loading .message {
+      font-size: 1.25rem;
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+    }
+    .loading .dots {
+      display: inline-flex;
+      gap: 0.35rem;
+    }
+    .loading .dots span {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: bounce 1.4s ease-in-out infinite both;
+    }
+    .loading .dots span:nth-child(1) { animation-delay: 0s; }
+    .loading .dots span:nth-child(2) { animation-delay: 0.2s; }
+    .loading .dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0.6); opacity: 0.5; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+
+    .result { display: none; }
+    .result.visible { display: block; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+    .card h2 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+    }
+
+    .score-row {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.5rem;
+    }
+    .score-circle {
+      width: 88px;
+      height: 88px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.75rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .score-circle.high   { background: rgba(248, 81, 73, 0.2);  color: var(--high);   border: 2px solid var(--high); }
+    .score-circle.medium { background: rgba(210, 153, 34, 0.2); color: var(--medium); border: 2px solid var(--medium); }
+    .score-circle.low    { background: rgba(63, 185, 80, 0.2);  color: var(--low);    border: 2px solid var(--low); }
+    .score-label {
+      font-size: 1.1rem;
+      font-weight: 600;
+      text-transform: capitalize;
+    }
+    .score-label.high   { color: var(--high); }
+    .score-label.medium { color: var(--medium); }
+    .score-label.low    { color: var(--low); }
+
+    .trigger-list {
+      list-style: none;
+    }
+    .trigger-list li {
+      padding: 0.5rem 0;
+      padding-left: 1.5rem;
+      position: relative;
+      border-bottom: 1px solid var(--border);
+    }
+    .trigger-list li:last-child { border-bottom: none; }
+    .trigger-list li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0.75rem;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    .text-block {
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .no-data {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--text-muted);
+    }
+    .no-data .message { font-size: 1.1rem; margin-bottom: 0.5rem; }
+    .no-data .hint { font-size: 0.9rem; opacity: 0.8; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="loading" class="loading">
+      <p class="message">Calculating the Risk Score....</p>
+      <div class="dots">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+
+    <div id="no-data" class="no-data" style="display: none;">
+      <p class="message">No risk score data received.</p>
+      <p class="hint">Data is sent from n8n when the page is opened with a <code>data</code> or <code>payload</code> query parameter (base64-encoded JSON).</p>
+    </div>
+
+    <div id="result" class="result">
+      <div class="card">
+        <h2>Risk overview</h2>
+        <div class="score-row">
+          <div id="score-circle" class="score-circle">0</div>
+          <div>
+            <div id="score-label" class="score-label">—</div>
+            <div style="color: var(--text-muted); font-size: 0.9rem;">Risk level</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Trigger indicators</h2>
+        <ul id="trigger-list" class="trigger-list"></ul>
+      </div>
+
+      <div class="card">
+        <h2>Pattern comparison</h2>
+        <p id="pattern-comparison" class="text-block">—</p>
+      </div>
+
+      <div class="card">
+        <h2>Trend summary</h2>
+        <p id="trend-summary" class="text-block">—</p>
+      </div>
+
+      <div class="card">
+        <h2>Explanation</h2>
+        <p id="explanation" class="text-block">—</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var loadingEl = document.getElementById('loading');
+      var noDataEl = document.getElementById('no-data');
+      var resultEl = document.getElementById('result');
+
+      function getDataFromUrl() {
+        var params = new URLSearchParams(window.location.search);
+        var encoded = params.get('data') || params.get('payload');
+        if (encoded) {
+          try {
+            var json = atob(decodeURIComponent(encoded));
+            return JSON.parse(json);
+          } catch (e) {
+            console.warn('Failed to parse URL data', e);
+            return null;
+          }
+        }
+        // Optional: allow small JSON in ?json= for testing (escape properly in URL)
+        var raw = params.get('json');
+        if (raw) {
+          try {
+            return JSON.parse(decodeURIComponent(raw));
+          } catch (e) {
+            return null;
+          }
+        }
+        return null;
+      }
+
+      function levelClass(level) {
+        if (!level) return 'medium';
+        var l = (level + '').toLowerCase();
+        if (l === 'high') return 'high';
+        if (l === 'low') return 'low';
+        return 'medium';
+      }
+
+      function render(data) {
+        var item = Array.isArray(data) ? data[0] : data;
+        if (!item) return false;
+
+        var score = item.risk_score;
+        var level = (item.risk_level || '').trim() || 'Medium';
+        var indicators = item.trigger_indicators || [];
+        var pattern = item.pattern_comparison || '—';
+        var trend = item.trend_summary || '—';
+        var explanation = item.explanation || '—';
+
+        document.getElementById('score-circle').textContent = score;
+        document.getElementById('score-circle').className = 'score-circle ' + levelClass(level);
+        document.getElementById('score-label').textContent = level;
+        document.getElementById('score-label').className = 'score-label ' + levelClass(level);
+
+        var listEl = document.getElementById('trigger-list');
+        listEl.innerHTML = '';
+        indicators.forEach(function (indicator) {
+          var li = document.createElement('li');
+          li.textContent = indicator;
+          listEl.appendChild(li);
+        });
+
+        document.getElementById('pattern-comparison').textContent = pattern;
+        document.getElementById('trend-summary').textContent = trend;
+        document.getElementById('explanation').textContent = explanation;
+
+        return true;
+      }
+
+      function showResult(hasData) {
+        loadingEl.style.display = 'none';
+        if (hasData) {
+          noDataEl.style.display = 'none';
+          resultEl.classList.add('visible');
+        } else {
+          resultEl.classList.remove('visible');
+          noDataEl.style.display = 'block';
+        }
+      }
+
+      // Simulate short calculation delay, then read URL and render
+      setTimeout(function () {
+        var data = getDataFromUrl();
+        var hasData = data && render(data);
+        showResult(hasData);
+      }, 800);
+    })();
+  </script>
+</body>
+</html>
