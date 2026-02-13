@@ -281,7 +281,8 @@
       }
 
       function loadFromApi() {
-        return fetch('/api/receive', { method: 'GET' })
+        var url = '/api/receive?t=' + Date.now();
+        return fetch(url, { method: 'GET', cache: 'no-store', headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' } })
           .then(function (res) { return res.ok ? res.json() : null; })
           .then(function (body) { return normalizePayload(body); });
       }
