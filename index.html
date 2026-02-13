@@ -151,7 +151,8 @@
 
     <div id="no-data" class="no-data" style="display: none;">
       <p class="message">No risk score data received.</p>
-      <p class="hint">Data is sent from n8n when the page is opened with a <code>data</code> or <code>payload</code> query parameter (base64-encoded JSON).</p>
+      <p class="hint">Send data from n8n: use an HTTP Request node with <strong>POST</strong> to <code>/api/receive</code> (JSON body with risk_score, risk_level, trigger_indicators, etc.). Then click Refresh.</p>
+      <button id="refresh-no-data" type="button" style="margin-top: 1rem; padding: 0.5rem 1rem; background: var(--accent); color: var(--bg); border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">Refresh</button>
     </div>
 
     <div id="result" class="result">
@@ -185,6 +186,9 @@
         <h2>Explanation</h2>
         <p id="explanation" class="text-block">—</p>
       </div>
+      <div style="margin-top: 1rem;">
+        <button id="refresh-btn" type="button" style="padding: 0.5rem 1rem; background: var(--accent); color: var(--bg); border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">Refresh Data</button>
+      </div>
     </div>
   </div>
 
@@ -206,7 +210,6 @@
             return null;
           }
         }
-        // Optional: allow small JSON in ?json= for testing (escape properly in URL)
         var raw = params.get('json');
         if (raw) {
           try {
@@ -268,11 +271,54 @@
         }
       }
 
-      // Simulate short calculation delay, then read URL and render
-      setTimeout(function () {
+      function normalizePayload(raw) {
+        if (!raw) return null;
+        var p = raw;
+        if (raw.latest && raw.latest.payload) p = raw.latest.payload;
+        if (Array.isArray(p) && p.length) return p;
+        if (p && typeof p === 'object') return p;
+        return null;
+      }
+
+      function loadFromApi() {
+        return fetch('/api/receive', { method: 'GET' })
+          .then(function (res) { return res.ok ? res.json() : null; })
+          .then(function (body) { return normalizePayload(body); });
+      }
+
+      function runLoad() {
         var data = getDataFromUrl();
-        var hasData = data && render(data);
-        showResult(hasData);
+        if (data) {
+          showResult(render(data));
+          return;
+        }
+        loadFromApi().then(function (apiData) {
+          var hasData = apiData && render(apiData);
+          showResult(hasData);
+        }).catch(function () {
+          showResult(false);
+        });
+      }
+
+      function onRefresh() {
+        loadingEl.style.display = 'block';
+        noDataEl.style.display = 'none';
+        resultEl.classList.remove('visible');
+        loadFromApi().then(function (apiData) {
+          var hasData = apiData && render(apiData);
+          showResult(hasData);
+        }).catch(function () {
+          showResult(false);
+        });
+      }
+
+      document.getElementById('refresh-btn').addEventListener('click', onRefresh);
+      if (document.getElementById('refresh-no-data')) {
+        document.getElementById('refresh-no-data').addEventListener('click', onRefresh);
+      }
+
+      setTimeout(function () {
+        runLoad();
       }, 800);
     })();
   </script>
