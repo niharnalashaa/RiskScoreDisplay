@@ -212,7 +212,7 @@
 
     var params = new URLSearchParams(window.location.search);
     var patientId = params.get("patientId");
-
+console.log(patientId,'patientId')
       var storedPatientId = patientId;
         if (storedPatientId && document.getElementById("patientIdDisplay")) {
           document.getElementById("patientIdDisplay").textContent = storedPatientId;
