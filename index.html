@@ -157,6 +157,17 @@
 
     <div id="result" class="result">
       <div class="card">
+        <h2>Patient</h2>
+        <div class="score-row">
+          <div>
+            <div id="patientIdDisplay" style="color: var(--text-muted); font-size: 0.9rem;">
+              <!-- Patient ID will be inserted here -->
+            </div>
+          </div>
+        </div>
+    </div>
+      
+      <div class="card">
         <h2>Risk overview</h2>
         <div class="score-row">
           <div id="score-circle" class="score-circle">0</div>
@@ -188,6 +199,7 @@
       </div>
       <div style="margin-top: 1rem;">
         <button id="refresh-btn" type="button" style="padding: 0.5rem 1rem; background: var(--accent); color: var(--bg); border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">Refresh Data</button>
+        <button id="back-btn" type="button" style="padding: 0.5rem 1rem;background: var(--accent);color: var(--bg);border: none;border-radius: 6px;cursor: pointer;font-size: 0.9rem;margin-left: 350px;">Calculate for another Patient</button>
       </div>
     </div>
   </div>
@@ -197,6 +209,11 @@
       var loadingEl = document.getElementById('loading');
       var noDataEl = document.getElementById('no-data');
       var resultEl = document.getElementById('result');
+
+      var storedPatientId = sessionStorage.getItem("patientId");
+        if (storedPatientId && document.getElementById("patientIdDisplay")) {
+          document.getElementById("patientIdDisplay").textContent = storedPatientId;
+        }
 
       function getDataFromUrl() {
         var params = new URLSearchParams(window.location.search);
@@ -316,6 +333,14 @@
       document.getElementById('refresh-btn').addEventListener('click', onRefresh);
       if (document.getElementById('refresh-no-data')) {
         document.getElementById('refresh-no-data').addEventListener('click', onRefresh);
+      }
+
+      var backBtn = document.getElementById('back-btn');
+      if (backBtn) {
+        backBtn.addEventListener('click', function () {
+        sessionStorage.removeItem("patientId");
+        window.location.href = "https://niharnalashaa.github.io/RiskScoreInitiation";
+      });
       }
 
       setTimeout(function () {
