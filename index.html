@@ -210,7 +210,10 @@
       var noDataEl = document.getElementById('no-data');
       var resultEl = document.getElementById('result');
 
-      var storedPatientId = sessionStorage.getItem("patientId");
+    var params = new URLSearchParams(window.location.search);
+    var patientId = params.get("patientId");
+
+      var storedPatientId = patientId;
         if (storedPatientId && document.getElementById("patientIdDisplay")) {
           document.getElementById("patientIdDisplay").textContent = storedPatientId;
         }
