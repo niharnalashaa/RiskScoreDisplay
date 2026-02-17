@@ -211,8 +211,8 @@
       var resultEl = document.getElementById('result');
 
     var params = new URLSearchParams(window.location.search);
-    var patientId = params.get("patientId");
-console.log(patientId,'patientId')
+    var patientId = params.get("patientid");
+console.log(patientId,'patientid')
       var storedPatientId = patientId;
         if (storedPatientId && document.getElementById("patientIdDisplay")) {
           document.getElementById("patientIdDisplay").textContent = storedPatientId;
